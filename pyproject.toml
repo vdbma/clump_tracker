@@ -1,0 +1,28 @@
+[project]
+name = "clump-tracker-rust"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "marc", email = "vandenbossche.marc@hotmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.5",
+    "pytest>=9.0.1",
+]
+
+[project.scripts]
+clump-tracker-rust = "clump_tracker_rust:main"
+
+[tool.maturin]
+module-name = "clump_tracker_rust._core"
+python-packages = ["clump_tracker_rust"]
+python-source = "src"
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.rs" }, { file = "Cargo.toml" }, { file = "Cargo.lock" }]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
