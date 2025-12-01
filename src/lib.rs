@@ -5,10 +5,11 @@ use pyo3::prelude::*;
 /// import the module.
 #[pymodule]
 mod _core {
+    use std::cmp::min;
     use pyo3::prelude::*;
     use pyo3::types::{PyDict,PyInt,PyList,PyFloat};
-    use numpy::ndarray::{Array,ArrayRef, Array1,ArrayD, ArrayView1, ArrayViewD, ArrayViewMutD,meshgrid, MeshIndex, Axis, Zip,Slice,IxDyn};
-    use numpy::{IntoPyArray, PyArray1, PyArrayDyn, PyReadonlyArrayDyn, PyArrayMethods};
+    use numpy::ndarray::{Array,ArrayRef, Array1, Array2,ArrayD, ArrayView1, ArrayViewD, ArrayViewMutD,meshgrid, MeshIndex, Axis, Zip,Slice,IxDyn};
+    use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArrayDyn, PyArrayMethods};
 
 
     fn compute_total_energy_adi_shearing_box(rho: &ArrayViewD<'_, f64>,
@@ -178,6 +179,129 @@ mod _core {
 
         PyList::new(py,find_adi_shearing_box(&a_rho,&a_vx1,&a_vx2,&a_vx3,&a_prs,&a_phi,f_q,f_omega,f_gamma,&a_x,&a_y,&a_z,f_e_thresh,f_rho_thresh))
         .expect("LJFLs")
+    }
+
+    fn compute_adjacency(indexes:&Vec<Vec<usize>>,
+        x:&ArrayView1<'_, f64>,
+        y:&ArrayView1<'_, f64>,
+        z:&ArrayView1<'_, f64>,
+        d: f64 ) -> Array2<u8> {
+        // indexes : list of 3D indexes
+        // d : distance to be considered connected
+
+        let mut adj = Array2::<u8>::zeros((indexes.len(),indexes.len())); // no bool arra :()
+
+        for i in 0..indexes.len() {
+            for j in 0..indexes.len() {
+                let d2 = (x[indexes[i][0]]-x[indexes[j][0]])*(x[indexes[i][0]]-x[indexes[j][0]])
+                        +(y[indexes[i][1]]-y[indexes[j][1]])*(y[indexes[i][1]]-y[indexes[j][1]])
+                        +(z[indexes[i][2]]-z[indexes[j][2]])*(z[indexes[i][2]]-z[indexes[j][2]])  ;    
+                adj[[i,j]] = (d2 <= d*d).try_into().unwrap();
+            }
+        }
+        adj
+    }
+
+    #[pyfunction(name="compute_adjacency")]
+    fn compute_adjacency_py<'py>( py: Python<'py>,
+                            indexes:Bound<'_, PyList>,
+                            x: &Bound<'py, PyArray1<f64>>,
+                            y: &Bound<'py, PyArray1<f64>>,
+                            z: &Bound<'py, PyArray1<f64>>,
+                            d: Bound<'_, PyFloat>
+                        ) -> Bound<'py, PyArray2<u8>> {
+        let r_x = unsafe {x.as_array()};
+        let r_y = unsafe {y.as_array()};
+        let r_z = unsafe {z.as_array()};
+        let r_d:f64 = d.extract().unwrap();
+        let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
+
+        compute_adjacency(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+    }
+
+    fn compute_cc(indexes:&Vec<Vec<usize>>,
+        x:&ArrayView1<'_, f64>,
+        y:&ArrayView1<'_, f64>,
+        z:&ArrayView1<'_, f64>,
+        d: f64 ) -> Vec<Vec<usize>> {
+    
+    
+    let mut composante_connexes:Vec<Vec<usize>> = Vec::new();
+    let mut nb_cc:usize = 0;
+
+    let mut deja_vus = Array1::<u8>::zeros(indexes.len());
+    //let mut a_visiter = Array1::<u8>::zeros(indexes.len());
+
+    let adj = compute_adjacency(indexes,x,y,z,d);
+
+
+    for (i,_) in indexes.iter().enumerate(){
+        let mut a_visiter = Array1::<u8>::zeros(indexes.len());
+        for k in 0..indexes.len() {
+            a_visiter[k] = adj[[i,k]];
+        }
+        a_visiter[[i]] = 0;
+        deja_vus[[i]] = 1;
+
+        for k in 0..indexes.len() {
+            if a_visiter[k] == 1 && deja_vus[k] == 0 {
+                a_visiter[k] = 1;
+            } else {
+                a_visiter[k] = 0; // useless
+            }
+        } 
+
+        composante_connexes.push([i].to_vec());
+        nb_cc +=1;
+
+        while a_visiter.sum()>0 {
+            for (j,c) in indexes.iter().enumerate() {
+                if deja_vus[j] == 0 {
+                    for k in 0..indexes.len() {
+                        a_visiter[k] += adj[[i,k]];
+                        a_visiter[k] = min(a_visiter[k],1);
+                    }
+                    a_visiter[j] = 0;
+                    deja_vus[j] = 1;
+
+                    for k in 0..indexes.len() {
+                        if a_visiter[k] == 1 && deja_vus[k] == 0 {
+                            a_visiter[k] = 1;
+                        } else {
+                            a_visiter[k] = 0;
+                        }
+                    } 
+                    composante_connexes[nb_cc-1].push(j);
+                }
+            }
+        }
+
+        let nb_deja_vus:usize = deja_vus.sum().try_into().unwrap();
+        if  nb_deja_vus== indexes.len(){
+            break;
+        }
+
+     
+    }
+
+    composante_connexes
+    }
+
+    #[pyfunction(name="compute_cc")]
+    fn compute_cc_py<'py>( py: Python<'py>,
+                            indexes:Bound<'_, PyList>,
+                            x: &Bound<'py, PyArray1<f64>>,
+                            y: &Bound<'py, PyArray1<f64>>,
+                            z: &Bound<'py, PyArray1<f64>>,
+                            d: Bound<'_, PyFloat>
+                        ) -> Bound<'py, PyList> {
+        let r_x = unsafe {x.as_array()};
+        let r_y = unsafe {y.as_array()};
+        let r_z = unsafe {z.as_array()};
+        let r_d:f64 = d.extract().unwrap();
+        let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
+
+        PyList::new(py,compute_cc(&r_indexes,&r_x,&r_y,&r_z,r_d)).expect("???")
     }
 
 }
