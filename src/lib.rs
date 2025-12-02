@@ -6,8 +6,9 @@ use pyo3::prelude::*;
 #[pymodule]
 mod _core {
     use std::cmp::min;
+    use std::string::String;
     use pyo3::prelude::*;
-    use pyo3::types::{PyDict,PyInt,PyList,PyFloat};
+    use pyo3::types::{PyDict,PyInt,PyList,PyFloat,PyString};
     use numpy::ndarray::{Array,ArrayRef, Array1, Array2,ArrayD, ArrayView1, ArrayViewD, ArrayViewMutD,meshgrid, MeshIndex, Axis, Zip,Slice,IxDyn};
     use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArrayDyn, PyArrayMethods};
 
@@ -181,7 +182,7 @@ mod _core {
         .expect("LJFLs")
     }
 
-    fn compute_adjacency(indexes:&Vec<Vec<usize>>,
+    fn compute_adjacency_cartesian(indexes:&Vec<Vec<usize>>,
         x:&ArrayView1<'_, f64>,
         y:&ArrayView1<'_, f64>,
         z:&ArrayView1<'_, f64>,
@@ -202,8 +203,8 @@ mod _core {
         adj
     }
 
-    #[pyfunction(name="compute_adjacency")]
-    fn compute_adjacency_py<'py>( py: Python<'py>,
+    #[pyfunction(name="compute_adjacency_cartesian")]
+    fn compute_adjacency_cartesian_py<'py>( py: Python<'py>,
                             indexes:Bound<'_, PyList>,
                             x: &Bound<'py, PyArray1<f64>>,
                             y: &Bound<'py, PyArray1<f64>>,
@@ -216,14 +217,15 @@ mod _core {
         let r_d:f64 = d.extract().unwrap();
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
 
-        compute_adjacency(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+        compute_adjacency_cartesian(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
     }
 
     fn compute_cc(indexes:&Vec<Vec<usize>>,
         x:&ArrayView1<'_, f64>,
         y:&ArrayView1<'_, f64>,
         z:&ArrayView1<'_, f64>,
-        d: f64 ) -> Vec<Vec<usize>> {
+        d: f64,
+        geometry:String ) -> Vec<Vec<usize>> {
     
     
     let mut composante_connexes:Vec<Vec<usize>> = Vec::new();
@@ -231,7 +233,12 @@ mod _core {
 
     let mut deja_vus = Array1::<u8>::zeros(indexes.len());
 
-    let adj = compute_adjacency(indexes,x,y,z,d);
+    let adj;
+    if geometry == "cartesian" {
+            adj = compute_adjacency_cartesian(indexes,x,y,z,d);
+    } else {
+        unimplemented!()
+    }
 
 
     for (i,_) in indexes.iter().enumerate(){
@@ -292,15 +299,17 @@ mod _core {
                             x: &Bound<'py, PyArray1<f64>>,
                             y: &Bound<'py, PyArray1<f64>>,
                             z: &Bound<'py, PyArray1<f64>>,
-                            d: Bound<'_, PyFloat>
+                            d: Bound<'_, PyFloat>,
+                            geometry: Bound<'_, PyString>
                         ) -> Bound<'py, PyList> {
         let r_x = unsafe {x.as_array()};
         let r_y = unsafe {y.as_array()};
         let r_z = unsafe {z.as_array()};
         let r_d:f64 = d.extract().unwrap();
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
+        let r_geometry:String = geometry.extract().unwrap();
 
-        PyList::new(py,compute_cc(&r_indexes,&r_x,&r_y,&r_z,r_d)).expect("???")
+        PyList::new(py,compute_cc(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
     }
 
 }

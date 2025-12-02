@@ -1,9 +1,9 @@
-from clump_tracker_rust import compute_adjacency, compute_cc
+from clump_tracker_rust import compute_adjacency_cartesian, compute_cc
 import pytest
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-def _compute_adjacency_ref(indexes,x,y,z,max_distance):
+def _compute_adjacency_cartesian_ref(indexes,x,y,z,max_distance):
     """
     computes and returns adjacency matrix
     this is a reference implementation for
@@ -34,7 +34,7 @@ def _compute_cc_ref(indexes,x,y,z,max_distance):
     a_visiter = np.zeros((len(indexes)),dtype=bool)
     composante_connexes = []
 
-    adj = _compute_adjacency_ref(indexes,x,y,z,max_distance)
+    adj = _compute_adjacency_cartesian_ref(indexes,x,y,z,max_distance)
 
     # ajoute les voisins de p0 dans a_visiter
     for i,_ in enumerate(indexes):
@@ -75,7 +75,7 @@ def test_adjacency(indexes):
     y = np.linspace(0,5,20) 
     z = np.linspace(0,1,5)
 
-    assert_array_equal(compute_adjacency(indexes,x,y,z,1.),_compute_adjacency_ref(indexes,x,y,z,1.))
+    assert_array_equal(compute_adjacency_cartesian(indexes,x,y,z,1.),_compute_adjacency_cartesian_ref(indexes,x,y,z,1.))
 
 @pytest.mark.parametrize("indexes", 
 [
@@ -91,4 +91,20 @@ def test_cc(indexes):
     y = np.linspace(0,5,20) 
     z = np.linspace(0,1,5)
 
-    assert_array_equal(compute_cc(indexes,x,y,z,1.),_compute_cc_ref(indexes,x,y,z,1.))
+    assert_array_equal(compute_cc(indexes,x,y,z,1.,"cartesian"),_compute_cc_ref(indexes,x,y,z,1.))
+@pytest.mark.parametrize("indexes", 
+[
+    [[0,0,0],[0,1,0],[1,0,1]],
+    [[0,0,0],[49,19,4]],
+    [[i,0,0] for i in range(50)]+[[i,0,4] for i in range(50)]
+
+
+])
+@pytest.mark.xfail
+def test_cc_not_implemented(indexes):
+    print(indexes)
+    x = np.linspace(0,10,50)
+    y = np.linspace(0,5,20) 
+    z = np.linspace(0,1,5)
+
+    assert_array_equal(compute_cc(indexes,x,y,z,1.,"polar"),_compute_cc_ref(indexes,x,y,z,1.))
