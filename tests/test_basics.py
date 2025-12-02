@@ -8,9 +8,10 @@ def test_tests():
     assert True
 
 
-def test_gradient_1D_uniform():
-    field = np.arange(10, dtype=float) + 5
-    x = np.arange(10, dtype=float)
+@pytest.mark.parametrize("dtype", [float, np.float32, np.float64])
+def test_gradient_1D_uniform(dtype):
+    field = np.arange(10, dtype=dtype) + 5
+    x = np.arange(10, dtype=dtype)
     axis = 0
     assert_array_equal(gradient(field, x, axis), np.gradient(field, x, axis=axis))
 
