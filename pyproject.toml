@@ -1,5 +1,5 @@
 [project]
-name = "clump-tracker-rust"
+name = "clump-tracker"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,11 +13,11 @@ dependencies = [
 ]
 
 [project.scripts]
-clump-tracker-rust = "clump_tracker_rust:main"
+clump-tracker = "clump_tracker:main"
 
 [tool.maturin]
-module-name = "clump_tracker_rust._core"
-python-packages = ["clump_tracker_rust"]
+module-name = "clump_tracker._core"
+python-packages = ["clump_tracker"]
 python-source = "src"
 
 [tool.uv]

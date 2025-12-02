@@ -25,15 +25,15 @@ mod _core {
                          x:&ArrayView1<'_, f64>,
                          y:&ArrayView1<'_, f64>,
                          z:&ArrayView1<'_, f64>) -> ArrayD< f64> {
-                        
-    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requieres unreleased nupy-rust to acces ndarray >=0.17
-    
+                        // DO NOT USE, not ready
+    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requires unreleased nupy-rust to access ndarray >=0.17
+
     let e_c = 0.5 * rho * (vx1 * vx1 + (vx2 + q * omega * &xx) * (vx2 + q * omega * &xx) + vx3 * vx3);
-    let e_th = prs / (gamma -1.);                        
+    let e_th = prs / (gamma -1.);
     let e_p = rho * phi;
     &e_th + &e_c + &e_p
     }
-    
+
     fn gradient(field: &ArrayViewD<'_, f64>, x: &ArrayView1<'_, f64>, axis:usize) -> ArrayD<f64> {
 
         let n:isize = x.len().try_into().unwrap(); // slice wants isize for some reason
@@ -45,7 +45,7 @@ mod _core {
         let f_p = &field.slice_axis(Axis(axis),Slice::new(2,Some(n),1)); // f_{i+1}
         let f_m = &field.slice_axis(Axis(axis),Slice::new(0,Some(n-2),1)); // f_{i-1}
         let f = &field.slice_axis(Axis(axis),Slice::new(1,Some(n-1),1)); // f_i
-        
+
         let mut dims = Array1::ones::<usize>(field.ndim()-axis);
         dims[[0]] = n-2;
 
@@ -57,7 +57,7 @@ mod _core {
 
         _d.slice_axis_mut(Axis(0),Slice::new(0,Some(n-2),1))
         .assign(&dx.slice_axis(Axis(0),Slice::new(1,Some(n-1),1)).to_shape(shape.clone()).unwrap());
-        
+
         _d_m.slice_axis_mut(Axis(0),Slice::new(0,Some(n-2),1))
         .assign(&dx.slice_axis(Axis(0),Slice::new(0,Some(n-2),1)).to_shape(shape.clone()).unwrap());
 
@@ -66,20 +66,20 @@ mod _core {
 
 
 
-        grad.slice_axis_mut(Axis(axis),Slice::new(1,Some(n-1),1)) // oder 2 inner region
+        grad.slice_axis_mut(Axis(axis),Slice::new(1,Some(n-1),1)) // order 2 inner region
         .assign(&((d_m*d_m *f_p - (d_m *d_m - d*d)*f -d*d*f_m)/(d*d_m*(d+d_m))));
 
         //Order 1 forward and backward for edges
         let f_0 = &field.slice_axis(Axis(axis),Slice::new(0,Some(1),1));
         let f_1 = &field.slice_axis(Axis(axis),Slice::new(1,Some(2),1));
 
-        grad.slice_axis_mut(Axis(axis),Slice::new(0,Some(1),1)) 
+        grad.slice_axis_mut(Axis(axis),Slice::new(0,Some(1),1))
         .assign(&((f_1-f_0)/dx[[0]]));
 
         let f_m1 = &field.slice_axis(Axis(axis),Slice::new(n-1,Some(n),1));
         let f_m2 = &field.slice_axis(Axis(axis),Slice::new(n-2,Some(n-1),1));
 
-        grad.slice_axis_mut(Axis(axis),Slice::new(n-1,Some(n),1)) 
+        grad.slice_axis_mut(Axis(axis),Slice::new(n-1,Some(n),1))
         .assign(&((f_m1-f_m2)/dx[[x.len()-2]]));
 
 
@@ -106,10 +106,10 @@ mod _core {
                                 z:&ArrayView1<'_, f64>,
                                 q: f64,
                                 omega :f64,) -> ArrayD< f64> {
-    
-    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requieres unreleased nupy-rust to acces ndarray >=0.17
 
-    
+    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requires unreleased nupy-rust to access ndarray >=0.17
+
+
     &gradient(vx1,x,0)+ &gradient(&(vx2 + q * omega * &xx).view(),y,1)//+ &gradient(vx3 ,z,2)
 
     }
@@ -131,17 +131,17 @@ mod _core {
             e_thresh: f64,
             rho_thresh: f64) -> Vec<usize>{
                 /// this returns the list of indexes (truples) where the criterion is satisfied
-    
+
                 let e_tot = compute_total_energy_adi_shearing_box(rho,vx1,vx2,vx3,prs,phi,q,omega,gamma,x,y,z);
                 let div = compute_velocity_divergence_shearing_box(vx1,vx2,vx3,x,y,z,q,omega);
 
                 let mask = (&e_tot).map(|x| *x < e_thresh) & (&div).map(|x| *x < 0.0);// & (rho).map(|x| *x > rho_thresh);
-                
+
                 mask.iter()
                 .enumerate()
                 .filter_map(|(index, &value)| (value == true).then(|| index))
                 .collect() // ca renvoie peut-etre des indices 1D, à vérifier
-        
+
     }
 
     #[pyfunction(name="find_adi_shearing_box")]
@@ -196,7 +196,7 @@ mod _core {
             for j in 0..indexes.len() {
                 let d2 = (x[indexes[i][0]]-x[indexes[j][0]])*(x[indexes[i][0]]-x[indexes[j][0]])
                         +(y[indexes[i][1]]-y[indexes[j][1]])*(y[indexes[i][1]]-y[indexes[j][1]])
-                        +(z[indexes[i][2]]-z[indexes[j][2]])*(z[indexes[i][2]]-z[indexes[j][2]])  ;    
+                        +(z[indexes[i][2]]-z[indexes[j][2]])*(z[indexes[i][2]]-z[indexes[j][2]])  ;
                 adj[[i,j]] = (d2 <= d*d).try_into().unwrap();
             }
         }
@@ -226,8 +226,8 @@ mod _core {
         z:&ArrayView1<'_, f64>,
         d: f64,
         geometry:String ) -> Vec<Vec<usize>> {
-    
-    
+
+
     let mut composante_connexes:Vec<Vec<usize>> = Vec::new();
     let mut nb_cc:usize = 0;
 
@@ -255,7 +255,7 @@ mod _core {
             } else {
                 a_visiter[k] = 0; // useless
             }
-        } 
+        }
 
         composante_connexes.push([i].to_vec());
         nb_cc +=1;
@@ -276,7 +276,7 @@ mod _core {
                         } else {
                             a_visiter[k] = 0;
                         }
-                    } 
+                    }
                     composante_connexes[nb_cc-1].push(j);
                 }
             }
@@ -287,7 +287,7 @@ mod _core {
             break;
         }
 
-     
+
     }
 
     composante_connexes
