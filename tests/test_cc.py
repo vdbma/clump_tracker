@@ -2,6 +2,7 @@ from clump_tracker import compute_adjacency_cartesian, compute_cc
 import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
+from itertools import product
 
 
 def _compute_adjacency_cartesian_ref(indexes, x, y, z, max_distance):
@@ -61,19 +62,25 @@ def _compute_cc_ref(indexes, x, y, z, max_distance):
     return composante_connexes
 
 
-@pytest.mark.parametrize(
-    "indexes",
-    [
-        [[0, 0, 0], [0, 1, 0], [1, 0, 1]],
-        [[0, 0, 0], [49, 19, 4]],
-        [[i, 0, 0] for i in range(50)] + [[i, 0, 4] for i in range(50)],
-    ],
-)
-def test_adjacency(indexes):
-    print(indexes)
-    x = np.linspace(0, 10, 50)
-    y = np.linspace(0, 5, 20)
-    z = np.linspace(0, 1, 5)
+def _params():
+    return (
+        "indexes,dtype",
+        product(
+            [
+                [[0, 0, 0], [0, 1, 0], [1, 0, 1]],
+                [[0, 0, 0], [49, 19, 4]],
+                [[i, 0, 0] for i in range(50)] + [[i, 0, 4] for i in range(50)],
+            ],
+            [np.float32, np.float64, float],
+        ),
+    )
+
+
+@pytest.mark.parametrize(*_params())
+def test_adjacency(indexes, dtype):
+    x = np.linspace(0, 10, 50, dtype=dtype)
+    y = np.linspace(0, 5, 20, dtype=dtype)
+    z = np.linspace(0, 1, 5, dtype=dtype)
 
     assert_array_equal(
         compute_adjacency_cartesian(indexes, x, y, z, 1.0),
@@ -81,19 +88,11 @@ def test_adjacency(indexes):
     )
 
 
-@pytest.mark.parametrize(
-    "indexes",
-    [
-        [[0, 0, 0], [0, 1, 0], [1, 0, 1]],
-        [[0, 0, 0], [49, 19, 4]],
-        [[i, 0, 0] for i in range(50)] + [[i, 0, 4] for i in range(50)],
-    ],
-)
-def test_cc(indexes):
-    print(indexes)
-    x = np.linspace(0, 10, 50)
-    y = np.linspace(0, 5, 20)
-    z = np.linspace(0, 1, 5)
+@pytest.mark.parametrize(*_params())
+def test_cc(indexes, dtype):
+    x = np.linspace(0, 10, 50, dtype=dtype)
+    y = np.linspace(0, 5, 20, dtype=dtype)
+    z = np.linspace(0, 1, 5, dtype=dtype)
 
     assert_array_equal(
         compute_cc(indexes, x, y, z, 1.0, "cartesian"),
@@ -101,20 +100,12 @@ def test_cc(indexes):
     )
 
 
-@pytest.mark.parametrize(
-    "indexes",
-    [
-        [[0, 0, 0], [0, 1, 0], [1, 0, 1]],
-        [[0, 0, 0], [49, 19, 4]],
-        [[i, 0, 0] for i in range(50)] + [[i, 0, 4] for i in range(50)],
-    ],
-)
 @pytest.mark.xfail
-def test_cc_not_implemented(indexes):
-    print(indexes)
-    x = np.linspace(0, 10, 50)
-    y = np.linspace(0, 5, 20)
-    z = np.linspace(0, 1, 5)
+@pytest.mark.parametrize(*_params())
+def test_cc_not_implemented(indexes, dtype):
+    x = np.linspace(0, 10, 50, dtype=dtype)
+    y = np.linspace(0, 5, 20, dtype=dtype)
+    z = np.linspace(0, 1, 5, dtype=dtype)
 
     assert_array_equal(
         compute_cc(indexes, x, y, z, 1.0, "polar"),

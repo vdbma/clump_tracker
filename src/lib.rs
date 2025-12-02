@@ -9,35 +9,34 @@ mod _core {
     use std::string::String;
     use pyo3::prelude::*;
     use pyo3::types::{PyDict,PyInt,PyList,PyFloat,PyString};
-    use numpy::ndarray::{Array,ArrayRef, Array1, Array2,ArrayD, ArrayView1, ArrayViewD, ArrayViewMutD,meshgrid, MeshIndex, Axis, Zip,Slice,IxDyn};
+    use numpy::ndarray::{Array,ArrayRef, Array1, Array2,ArrayD, ArrayView1,ArrayView3, ArrayViewD, ArrayViewMutD,meshgrid, MeshIndex, Axis, Zip,Slice,IxDyn};
     use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArrayDyn, PyArrayMethods};
+    use num_traits::{Float, Signed};
+    use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign,Neg};
+
+    trait AtLeastF32: Float + From<f32> + Signed +numpy::ndarray::ScalarOperand
+    + Copy
+    + Clone
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + Neg<Output = Self>
+{
+}
+    impl AtLeastF32 for f32 {}
+    impl AtLeastF32 for f64 {}
 
 
-    fn compute_total_energy_adi_shearing_box(rho: &ArrayViewD<'_, f64>,
-                         vx1: &ArrayViewD<'_, f64>,
-                         vx2: &ArrayViewD<'_, f64>,
-                         vx3: &ArrayViewD<'_, f64>,
-                         prs: &ArrayViewD<'_, f64>,
-                         phi: &ArrayViewD<'_, f64>,
-                         q: f64,
-                         omega :f64,
-                         gamma: f64,
-                         x:&ArrayView1<'_, f64>,
-                         y:&ArrayView1<'_, f64>,
-                         z:&ArrayView1<'_, f64>) -> ArrayD< f64> {
-                        // DO NOT USE, not ready
-    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requires unreleased nupy-rust to access ndarray >=0.17
 
-    let e_c = 0.5 * rho * (vx1 * vx1 + (vx2 + q * omega * &xx) * (vx2 + q * omega * &xx) + vx3 * vx3);
-    let e_th = prs / (gamma -1.);
-    let e_p = rho * phi;
-    &e_th + &e_c + &e_p
-    }
-
-    fn gradient(field: &ArrayViewD<'_, f64>, x: &ArrayView1<'_, f64>, axis:usize) -> ArrayD<f64> {
+    fn gradient<T:AtLeastF32>(field: &ArrayViewD<'_, T>, x: &ArrayView1<'_, T>, axis:usize) -> ArrayD<T> {
 
         let n:isize = x.len().try_into().unwrap(); // slice wants isize for some reason
-        let mut grad = ArrayD::<f64>::zeros(field.raw_dim());
+        let mut grad = ArrayD::<T>::zeros(field.raw_dim());
 
         let dx = ArrayRef::diff(&x,1,Axis(0)); //why mt though ?
 
@@ -86,8 +85,20 @@ mod _core {
         grad
     }
 
-    #[pyfunction(name="gradient")]
-    fn gradient_py<'py>( py: Python<'py>,
+    #[pyfunction(name="gradient_f32")]
+    fn gradient_f32_py<'py>( py: Python<'py>,
+                        field: &Bound<'py, PyArrayDyn<f32>>,
+                        x: &Bound<'py, PyArray1<f32>>,
+                        axis:Bound<'py, PyInt>
+                    ) -> Bound<'py, PyArrayDyn<f32>> {
+        let ff = unsafe {field.as_array()};
+        let xx = unsafe {x.as_array()};
+        let a = axis.extract::<usize>();
+        gradient::<f32>(&ff,&xx,a.expect("LJFLs")).into_pyarray(py) // .expect(...) solution given by the compiler but why ???
+    }
+
+    #[pyfunction(name="gradient_f64")]
+    fn gradient_f64_py<'py>( py: Python<'py>,
                         field: &Bound<'py, PyArrayDyn<f64>>,
                         x: &Bound<'py, PyArray1<f64>>,
                         axis:Bound<'py, PyInt>
@@ -95,7 +106,29 @@ mod _core {
         let ff = unsafe {field.as_array()};
         let xx = unsafe {x.as_array()};
         let a = axis.extract::<usize>();
-        gradient(&ff,&xx,a.expect("LJFLs")).into_pyarray(py) // .expect(...) solution given by the compiler but why ???
+        gradient::<f64>(&ff,&xx,a.expect("LJFLs")).into_pyarray(py) // .expect(...) solution given by the compiler but why ???
+    }
+
+    /*
+    fn compute_total_energy_adi_shearing_box(rho: &ArrayViewD<'_, f64>,
+                         vx1: &ArrayViewD<'_, f64>,
+                         vx2: &ArrayViewD<'_, f64>,
+                         vx3: &ArrayViewD<'_, f64>,
+                         prs: &ArrayViewD<'_, f64>,
+                         phi: &ArrayViewD<'_, f64>,
+                         q: f64,
+                         omega :f64,
+                         gamma: f64,
+                         x:&ArrayView1<'_, f64>,
+                         y:&ArrayView1<'_, f64>,
+                         z:&ArrayView1<'_, f64>) -> ArrayD< f64> {
+                        // DO NOT USE, not ready
+    let (xx,_yy,_zz) = meshgrid((x,y,z),MeshIndex::IJ); //requires unreleased nupy-rust to access ndarray >=0.17
+
+    let e_c = 0.5 * rho * (vx1 * vx1 + (vx2 + q * omega * &xx) * (vx2 + q * omega * &xx) + vx3 * vx3);
+    let e_th = prs / (gamma -1.);
+    let e_p = rho * phi;
+    &e_th + &e_c + &e_p
     }
 
     fn compute_velocity_divergence_shearing_box(vx1: &ArrayViewD<'_, f64>,
@@ -181,12 +214,13 @@ mod _core {
         PyList::new(py,find_adi_shearing_box(&a_rho,&a_vx1,&a_vx2,&a_vx3,&a_prs,&a_phi,f_q,f_omega,f_gamma,&a_x,&a_y,&a_z,f_e_thresh,f_rho_thresh))
         .expect("LJFLs")
     }
+    */
 
-    fn compute_adjacency_cartesian(indexes:&Vec<Vec<usize>>,
-        x:&ArrayView1<'_, f64>,
-        y:&ArrayView1<'_, f64>,
-        z:&ArrayView1<'_, f64>,
-        d: f64 ) -> Array2<u8> {
+    fn compute_adjacency_cartesian<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
+        x:&ArrayView1<'_, T>,
+        y:&ArrayView1<'_, T>,
+        z:&ArrayView1<'_, T>,
+        d: T ) -> Array2<u8> {
         // indexes : list of 3D indexes
         // d : distance to be considered connected
 
@@ -203,8 +237,25 @@ mod _core {
         adj
     }
 
-    #[pyfunction(name="compute_adjacency_cartesian")]
-    fn compute_adjacency_cartesian_py<'py>( py: Python<'py>,
+    #[pyfunction(name="compute_adjacency_cartesian_f32")]
+    fn compute_adjacency_cartesian_f32_py<'py>( py: Python<'py>,
+                            indexes:Bound<'_, PyList>,
+                            x: &Bound<'py, PyArray1<f32>>,
+                            y: &Bound<'py, PyArray1<f32>>,
+                            z: &Bound<'py, PyArray1<f32>>,
+                            d: Bound<'_, PyFloat>
+                        ) -> Bound<'py, PyArray2<u8>> {
+        let r_x = unsafe {x.as_array()};
+        let r_y = unsafe {y.as_array()};
+        let r_z = unsafe {z.as_array()};
+        let r_d:f32 = d.extract().unwrap();
+        let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
+
+        compute_adjacency_cartesian::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+    }
+
+    #[pyfunction(name="compute_adjacency_cartesian_f64")]
+    fn compute_adjacency_cartesian_f64_py<'py>( py: Python<'py>,
                             indexes:Bound<'_, PyList>,
                             x: &Bound<'py, PyArray1<f64>>,
                             y: &Bound<'py, PyArray1<f64>>,
@@ -217,14 +268,14 @@ mod _core {
         let r_d:f64 = d.extract().unwrap();
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
 
-        compute_adjacency_cartesian(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+        compute_adjacency_cartesian::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
     }
 
-    fn compute_cc(indexes:&Vec<Vec<usize>>,
-        x:&ArrayView1<'_, f64>,
-        y:&ArrayView1<'_, f64>,
-        z:&ArrayView1<'_, f64>,
-        d: f64,
+    fn compute_cc<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
+        x:&ArrayView1<'_, T>,
+        y:&ArrayView1<'_, T>,
+        z:&ArrayView1<'_, T>,
+        d: T,
         geometry:String ) -> Vec<Vec<usize>> {
 
 
@@ -235,7 +286,7 @@ mod _core {
 
     let adj;
     if geometry == "cartesian" {
-            adj = compute_adjacency_cartesian(indexes,x,y,z,d);
+            adj = compute_adjacency_cartesian::<T>(indexes,x,y,z,d);
     } else {
         unimplemented!()
     }
@@ -293,8 +344,27 @@ mod _core {
     composante_connexes
     }
 
-    #[pyfunction(name="compute_cc")]
-    fn compute_cc_py<'py>( py: Python<'py>,
+    #[pyfunction(name="compute_cc_f32")]
+    fn compute_cc_f32_py<'py>( py: Python<'py>,
+                            indexes:Bound<'_, PyList>,
+                            x: &Bound<'py, PyArray1<f32>>,
+                            y: &Bound<'py, PyArray1<f32>>,
+                            z: &Bound<'py, PyArray1<f32>>,
+                            d: Bound<'_, PyFloat>,
+                            geometry: Bound<'_, PyString>
+                        ) -> Bound<'py, PyList> {
+        let r_x = unsafe {x.as_array()};
+        let r_y = unsafe {y.as_array()};
+        let r_z = unsafe {z.as_array()};
+        let r_d:f32 = d.extract().unwrap();
+        let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
+        let r_geometry:String = geometry.extract().unwrap();
+
+        PyList::new(py,compute_cc::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
+    }
+
+    #[pyfunction(name="compute_cc_f64")]
+    fn compute_cc_f64_py<'py>( py: Python<'py>,
                             indexes:Bound<'_, PyList>,
                             x: &Bound<'py, PyArray1<f64>>,
                             y: &Bound<'py, PyArray1<f64>>,
@@ -309,7 +379,6 @@ mod _core {
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
         let r_geometry:String = geometry.extract().unwrap();
 
-        PyList::new(py,compute_cc(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
+        PyList::new(py,compute_cc::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
     }
-
 }
