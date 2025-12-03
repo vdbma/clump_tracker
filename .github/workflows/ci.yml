@@ -31,6 +31,6 @@ jobs:
         python-version: ${{ matrix.python-version }}
         prune-cache: false
     - name: Install dependencies
-      run: uv sync --group testing ${{ matrix.sync-args }}
+      run: uv sync --group test ${{ matrix.sync-args }}
     - name: Test with pytest
       run: uv run --no-sync pytest
