@@ -11,9 +11,6 @@ dependencies = [
     "numpy>=1.25.0"
 ]
 
-[project.scripts]
-clump-tracker = "clump_tracker:main"
-
 [tool.maturin]
 module-name = "clump_tracker._core"
 python-packages = ["clump_tracker"]
