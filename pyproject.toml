@@ -30,3 +30,7 @@ build-backend = "maturin"
 testing = [
     "pytest>=9.0.1",
 ]
+
+[tool.pytest]
+strict = true
+filterwarnings = ["error"]
