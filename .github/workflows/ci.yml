@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         include:
-        - python-version: 3.11.0
+        - python-version: '3.11'
           sync-args: --resolution=lowest
         - python-version: '3.14'
 
