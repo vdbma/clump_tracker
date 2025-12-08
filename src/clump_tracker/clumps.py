@@ -11,6 +11,7 @@ class Clump:
     vz: float
     mass: float
     ncells: float
+    area: float
     max_density: float
 
     @property

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 from clump_tracker.clumps import Clump
-from clump_tracker._core import compute_cc
+from clump_tracker import compute_cc
 
 __all__ = ["find_clumps"]
 
@@ -57,9 +57,10 @@ def find_coordinates(
     mask = np.logical_and(E_tot < 0, div_v < 0)
 
     if condition is not None:
-        mask = np.logical_and(mask, condition(mask))
+        mask = np.logical_and(mask, condition(data))
 
-    return np.array(np.nonzero(mask)).T
+    out = np.array(np.nonzero(mask)).T
+    return out
 
 
 def find_clumps(
@@ -67,6 +68,9 @@ def find_clumps(
     x: ndarray[tuple[int, int, int]],
     y: ndarray[tuple[int, int, int]],
     z: ndarray[tuple[int, int, int]],
+    dx: ndarray[tuple[int, int, int]],
+    dy: ndarray[tuple[int, int, int]],
+    dz: ndarray[tuple[int, int, int]],
     max_distance: float,
     *,
     q: float = 3 / 2,
@@ -84,9 +88,22 @@ def find_clumps(
     cc = compute_cc(list(coordinates), x, y, z, max_distance, "cartesian")
 
     xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
+    ddx, ddy, ddz = np.meshgrid(dx, dy, dz, indexing="ij")
+    print(dz)
+    if len(y) == 1:
+        _dy = np.array([1.0])
+    else:
+        _dy = dy
+    if len(z) == 1:
+        _dz = np.array([1.0])
+    else:
+        _dz = dz
+    ddx, ddy, ddz = np.meshgrid(dx, _dy, _dz, indexing="ij")
+
+    dv = ddx * ddy * ddz
+    print(f"{dv.shape = }")
 
     clumps = []
-
     for c in cc:
         x = 0
         y = 0
@@ -97,21 +114,25 @@ def find_clumps(
         mass = 0
         ncells = 0
         max_density = 0
+        area = 0
         for idx in c:
-            x += xx[*idx] * data["RHO"][*idx]
-            y += yy[*idx] * data["RHO"][*idx]
-            z += zz[*idx] * data["RHO"][*idx]
+            idx_data = coordinates[idx]
+            m = data["RHO"][*idx_data] * dv[*idx_data]
+            mass += m
 
-            vx += data["VX1"][*idx] * data["RHO"][*idx]
+            x += xx[*idx_data] * m
+            y += yy[*idx_data] * m
+            z += zz[*idx_data] * m
+
+            vx += data["VX1"][*idx_data] * m
             if "VX2" in data:
-                vy += data["VX2"][*idx] * data["RHO"][*idx]
+                vy += data["VX2"][*idx_data] * m
             if "VX3" in data:
-                vz += data["VX3"][*idx] * data["RHO"][*idx]
+                vz += data["VX3"][*idx_data] * m
 
-            mass += data["RHO"][*idx]
-
-            max_density = max(max_density, data["RHO"][*idx])
+            max_density = max(max_density, data["RHO"][*idx_data])
             ncells += 1
+            area += dv[*idx_data]
         x /= mass
         y /= mass
         z /= mass
@@ -119,5 +140,5 @@ def find_clumps(
         vy /= mass
         vz /= mass
 
-        clumps.append(Clump(x, y, z, vx, vy, vz, mass, max_density))
+        clumps.append(Clump(x, y, z, vx, vy, vz, mass, ncells, area, max_density))
     return clumps
