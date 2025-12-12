@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-
 __all__ = ["compute_adjacency_cartesian", "compute_cc", "gradient"]
+
+from typing import TYPE_CHECKING, Union
+
+import numpy as np
 
 from clump_tracker._core import (
     compute_adjacency_cartesian_f32,
@@ -11,20 +14,17 @@ from clump_tracker._core import (
     gradient_f32,
     gradient_f64,
 )
-import numpy as np
-
-from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from numpy import ndarray, dtype
+    from numpy import dtype, ndarray
 
 
 def compute_cc(
     indexes: list[tuple[int, int, int], dtype[int]],
-    x: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    y: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    z: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    d: Union[float, np.float32, np.float64],
+    x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    y: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    z: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    d: float | np.float32 | np.float64,
     geometry: str,
 ) -> list[list[tuple[int, int, int], dtype[int]]]:
     if x.dtype == np.float32:
@@ -37,10 +37,10 @@ def compute_cc(
 
 def compute_adjacency_cartesian(
     indexes: list[tuple[int, int, int], dtype[int]],
-    x: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    y: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    z: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
-    d: Union[float, np.float32, np.float64],
+    x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    y: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    z: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    d: float | np.float32 | np.float64,
 ) -> list[list[tuple[int, int, int], dtype[int]]]:
     if x.dtype == np.float32:
         return compute_adjacency_cartesian_f32(indexes, x, y, z, d)
@@ -51,10 +51,10 @@ def compute_adjacency_cartesian(
 
 
 def gradient(
-    field: ndarray[dtype[Union[float, np.float32, np.float64]]],
-    x: ndarray[tuple[int], dtype[Union[float, np.float32, np.float64]]],
+    field: ndarray[dtype[float | np.float32 | np.float64]],
+    x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
     axis: int,
-) -> ndarray[dtype[Union[float, np.float32, np.float64]]]:
+) -> ndarray[dtype[float | np.float32 | np.float64]]:
     if x.dtype == np.float32:
         return gradient_f32(field, x, axis)
     elif x.dtype in [float, np.float64]:

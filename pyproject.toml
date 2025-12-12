@@ -34,3 +34,12 @@ test = [
 [tool.pytest]
 strict = true
 filterwarnings = ["error"]
+
+[tool.ruff.lint]
+select = [
+    "E", # flake8
+    "W", # flake8
+    "B", # flake8-bugbear
+    "I", # isort
+    "UP", # pyupgrade
+]

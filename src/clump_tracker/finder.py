@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
-from clump_tracker.clumps import Clump
+
 from clump_tracker import compute_cc
+from clump_tracker._core import compute_cc
+from clump_tracker.clumps import Clump
 
 __all__ = ["find_clumps"]
 
@@ -10,7 +12,8 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from numpy import ndarray, dtype
+
+    from numpy import dtype, ndarray
 
 
 def find_coordinates(
@@ -22,11 +25,10 @@ def find_coordinates(
     Omega: float = 1,
     gamma: float = -1.0,
     cs: float = -1.0,
-    condition: Optional[
-        Callable[
-            [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
-        ]
-    ] = None,
+    condition: Callable[
+        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
+    ]
+    | None = None,
 ) -> ndarray[tuple[int, int, int]]:
     if gamma == -1 and "PRS" in data:
         raise ValueError("Please specify gamma.")
@@ -77,11 +79,10 @@ def find_clumps(
     Omega: float = 1,
     gamma: float = -1.0,
     cs: float = -1.0,
-    condition: Optional[
-        Callable[
-            [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
-        ]
-    ] = None,
+    condition: Callable[
+        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
+    ]
+    | None = None,
 ) -> list[Clump]:
     coordinates = find_coordinates(data, x, y, z, q, Omega, gamma, cs, condition)
 

@@ -1,7 +1,8 @@
-from clump_tracker import compute_adjacency_cartesian, compute_cc
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
+
+from clump_tracker import compute_adjacency_cartesian, compute_cc
 
 
 def _compute_adjacency_cartesian_ref(indexes, x, y, z, max_distance):
@@ -27,8 +28,8 @@ def _compute_cc_ref(indexes, x, y, z, max_distance):
     """
     indexes : list of coordinates (array indexes)
 
-    this function checks the distance between all pairs in indexes, if it is less than `max_distance `
-    they are of the same clump
+    this function checks the distance between all pairs in indexes,
+    if it is less than `max_distance` they are of the same clump
 
     this is a reference implementation for
     testing purposes only
@@ -50,7 +51,7 @@ def _compute_cc_ref(indexes, x, y, z, max_distance):
         a_visiter = np.logical_and(a_visiter, np.logical_not(deja_vus))
 
         while np.sum(a_visiter) > 0:  # there are still people to visit
-            for j, c in enumerate(indexes):
+            for j, _ in enumerate(indexes):
                 if a_visiter[j] and not deja_vus[j]:
                     composante_connexes[-1].append(j)
                     a_visiter += adj[j]
