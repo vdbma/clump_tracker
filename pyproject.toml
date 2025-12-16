@@ -43,3 +43,23 @@ select = [
     "I", # isort
     "UP", # pyupgrade
 ]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "src/clump_tracker",
+    "tests",
+    "src"
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+# use exclude_also to *extend* the default exclude_lines,
+# and allow purely defensive code patterns
+exclude_also = [
+    "^\\s*raise NotImplementedError\\b",
+    "^\\s*raise RuntimeError\\b",
+    "^\\s*case _ as unreachable:",
+]
