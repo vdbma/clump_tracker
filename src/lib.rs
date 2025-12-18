@@ -216,62 +216,69 @@ mod _core {
     }
     */
 
-    fn compute_adjacency_cartesian<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
+
+    fn compute_adjacency_list_cartesian<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
         x:&ArrayView1<'_, T>,
         y:&ArrayView1<'_, T>,
         z:&ArrayView1<'_, T>,
-        d: T ) -> Array2<u8> {
+        d: T ) -> Vec<Vec<usize>> {
         // indexes : list of 3D indexes
         // d : distance to be considered connected
 
-        let mut adj = Array2::<u8>::zeros((indexes.len(),indexes.len())); // no bool arra :()
+        let mut adj:Vec<Vec<usize>> = Vec::new();
 
         for i in 0..indexes.len() {
+            let mut loc_adj:Vec<usize> = Vec::new();
             for j in 0..indexes.len() {
                 let d2 = (x[indexes[i][0]]-x[indexes[j][0]])*(x[indexes[i][0]]-x[indexes[j][0]])
                         +(y[indexes[i][1]]-y[indexes[j][1]])*(y[indexes[i][1]]-y[indexes[j][1]])
                         +(z[indexes[i][2]]-z[indexes[j][2]])*(z[indexes[i][2]]-z[indexes[j][2]])  ;
-                adj[[i,j]] = (d2 <= d*d).try_into().unwrap();
+
+                if d2 <= d*d {
+                    loc_adj.push(j);
+                }
             }
+            adj.push(loc_adj);
         }
         adj
     }
 
-    #[pyfunction(name="compute_adjacency_cartesian_f32")]
-    fn compute_adjacency_cartesian_f32_py<'py>( py: Python<'py>,
+    #[pyfunction(name="compute_adjacency_list_cartesian_f32")]
+    fn compute_adjacency_list_cartesian_f32_py<'py>( py: Python<'py>,
                             indexes:Bound<'_, PyList>,
                             x: &Bound<'py, PyArray1<f32>>,
                             y: &Bound<'py, PyArray1<f32>>,
                             z: &Bound<'py, PyArray1<f32>>,
                             d: Bound<'_, PyFloat>
-                        ) -> Bound<'py, PyArray2<u8>> {
+                        ) -> Bound<'py, PyList> {
         let r_x = unsafe {x.as_array()};
         let r_y = unsafe {y.as_array()};
         let r_z = unsafe {z.as_array()};
         let r_d:f32 = d.extract().unwrap();
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
 
-        compute_adjacency_cartesian::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+        PyList::new(py,compute_adjacency_list_cartesian::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d)).expect("lsjglsfkmd")
     }
 
-    #[pyfunction(name="compute_adjacency_cartesian_f64")]
-    fn compute_adjacency_cartesian_f64_py<'py>( py: Python<'py>,
+    #[pyfunction(name="compute_adjacency_list_cartesian_f64")]
+    fn compute_adjacency_list_cartesian_f64_py<'py>( py: Python<'py>,
                             indexes:Bound<'_, PyList>,
                             x: &Bound<'py, PyArray1<f64>>,
                             y: &Bound<'py, PyArray1<f64>>,
                             z: &Bound<'py, PyArray1<f64>>,
                             d: Bound<'_, PyFloat>
-                        ) -> Bound<'py, PyArray2<u8>> {
+                        ) -> Bound<'py, PyList> {
         let r_x = unsafe {x.as_array()};
         let r_y = unsafe {y.as_array()};
         let r_z = unsafe {z.as_array()};
         let r_d:f64 = d.extract().unwrap();
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
 
-        compute_adjacency_cartesian::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d).into_pyarray(py)
+        PyList::new(py,compute_adjacency_list_cartesian::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d)).expect("lsjglsfkmd")
     }
 
-    fn compute_cc<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
+
+    fn compute_cc_from_list<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
         x:&ArrayView1<'_, T>,
         y:&ArrayView1<'_, T>,
         z:&ArrayView1<'_, T>,
@@ -284,9 +291,9 @@ mod _core {
 
     let mut deja_vus = Array1::<usize>::zeros(indexes.len());
 
-    let adj;
+    let adj:Vec<Vec<usize>>;
     if geometry == "cartesian" {
-            adj = compute_adjacency_cartesian::<T>(indexes,x,y,z,d);
+            adj = compute_adjacency_list_cartesian::<T>(indexes,x,y,z,d);
     } else {
         unimplemented!()
     }
@@ -299,8 +306,8 @@ mod _core {
             nb_cc +=1;
         }
 
-        for k in 0..indexes.len() {
-            a_visiter[k] = adj[[i,k]];
+        for k in 0..adj[i].len() {
+            a_visiter[adj[i][k]] = 1;
         }
 
 
@@ -320,9 +327,8 @@ mod _core {
                 if a_visiter[j] == 1 && deja_vus[j] == 0 {
                     composante_connexes[nb_cc-1].push(j);
 
-                    for k in 0..indexes.len() {
-                        a_visiter[k] += adj[[j,k]];
-                        a_visiter[k] = min(a_visiter[k],1);
+                    for k in 0..adj[i].len() {
+                        a_visiter[adj[i][k]] = 1;
                     }
                     a_visiter[j] = 0;
                     deja_vus[j] = 1;
@@ -350,105 +356,7 @@ mod _core {
     composante_connexes
     }
 
-    fn compute_adjacency_cartesian_loc<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
-        i:usize,
-        x:&ArrayView1<'_, T>,
-        y:&ArrayView1<'_, T>,
-        z:&ArrayView1<'_, T>,
-        d: T ) -> Array1<u8> {
-        // indexes : list of 3D indexes
-        // d : distance to be considered connected
 
-        let mut adj = Array1::<u8>::zeros(indexes.len()); // no bool arra :()
-
-        for j in 0..indexes.len() {
-            let d2 = (x[indexes[i][0]]-x[indexes[j][0]])*(x[indexes[i][0]]-x[indexes[j][0]])
-                    +(y[indexes[i][1]]-y[indexes[j][1]])*(y[indexes[i][1]]-y[indexes[j][1]])
-                    +(z[indexes[i][2]]-z[indexes[j][2]])*(z[indexes[i][2]]-z[indexes[j][2]])  ;
-            adj[[j]] = (d2 <= d*d).try_into().unwrap();
-        }
-        adj
-    }
-
-    fn compute_cc_low_mem<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
-        x:&ArrayView1<'_, T>,
-        y:&ArrayView1<'_, T>,
-        z:&ArrayView1<'_, T>,
-        d: T,
-        geometry:String ) -> Vec<Vec<usize>> {
-
-
-    let mut composante_connexes:Vec<Vec<usize>> = Vec::new();
-    let mut nb_cc:usize = 0;
-
-    let mut deja_vus = Array1::<usize>::zeros(indexes.len());
-
-    if geometry != "cartesian" {
-        unimplemented!()
-    }
-
-
-    for (i,_) in indexes.iter().enumerate(){
-        let adj;
-        adj = compute_adjacency_cartesian_loc(indexes,i,x,y,z,d);
-
-        let mut a_visiter = Array1::<u8>::zeros(indexes.len());
-        if deja_vus[i] == 0 {
-            composante_connexes.push([i].to_vec());
-            nb_cc +=1;
-        }
-
-        for k in 0..indexes.len() {
-            a_visiter[k] = adj[[k]];
-        }
-
-
-        a_visiter[[i]] = 0;
-        deja_vus[[i]] = 1;
-
-        for k in 0..indexes.len() {
-            if a_visiter[k] == 1 && deja_vus[k] == 0 {
-                a_visiter[k] = 1;
-            } else {
-                a_visiter[k] = 0; // useless
-            }
-        }
-
-        while a_visiter.sum()>0 {
-            for (j,_) in indexes.iter().enumerate() {
-                if a_visiter[j] == 1 && deja_vus[j] == 0 {
-                    composante_connexes[nb_cc-1].push(j);
-                    let adj_loc;
-                    adj_loc = compute_adjacency_cartesian_loc(indexes,j,x,y,z,d);
-                    for k in 0..indexes.len() {
-                        a_visiter[k] += adj_loc[k];
-                        a_visiter[k] = min(a_visiter[k],1);
-                    }
-                    a_visiter[j] = 0;
-                    deja_vus[j] = 1;
-
-                    for k in 0..indexes.len() {
-                        if a_visiter[k] == 1 && deja_vus[k] == 0 {
-                            a_visiter[k] = 1;
-                        } else {
-                            a_visiter[k] = 0;
-                        }
-                    }
-
-                }
-            }
-        }
-
-        let nb_deja_vus:usize = deja_vus.sum().try_into().unwrap(); // sum result may overflow !
-        if  nb_deja_vus== indexes.len(){
-            break;
-        }
-
-
-    }
-
-    composante_connexes
-    }
 
 
     #[pyfunction(name="compute_cc_f32")]
@@ -467,7 +375,7 @@ mod _core {
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
         let r_geometry:String = geometry.extract().unwrap();
 
-        PyList::new(py,compute_cc_low_mem::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
+        PyList::new(py,compute_cc_from_list::<f32>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
     }
 
     #[pyfunction(name="compute_cc_f64")]
@@ -486,7 +394,9 @@ mod _core {
         let r_indexes:Vec<Vec<usize>> = indexes.extract().unwrap();
         let r_geometry:String = geometry.extract().unwrap();
 
-        PyList::new(py,compute_cc_low_mem::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
+        PyList::new(py,compute_cc_from_list::<f64>(&r_indexes,&r_x,&r_y,&r_z,r_d,r_geometry)).expect("???")
     }
+
+
 
 }

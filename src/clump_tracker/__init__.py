@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-__all__ = ["compute_adjacency_cartesian", "compute_cc", "gradient"]
+__all__ = [
+    "compute_adjacency_list_cartesian",
+    "compute_cc",
+    "gradient",
+]
 
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
 from clump_tracker._core import (
-    compute_adjacency_cartesian_f32,
-    compute_adjacency_cartesian_f64,
+    compute_adjacency_list_cartesian_f32,
+    compute_adjacency_list_cartesian_f64,
     compute_cc_f32,
     compute_cc_f64,
     gradient_f32,
@@ -35,21 +39,6 @@ def compute_cc(
         raise TypeError("Only supports f32 and f64.")
 
 
-def compute_adjacency_cartesian(
-    indexes: list[tuple[int, int, int], dtype[int]],
-    x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
-    y: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
-    z: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
-    d: float | np.float32 | np.float64,
-) -> list[list[tuple[int, int, int], dtype[int]]]:
-    if x.dtype == np.float32:
-        return compute_adjacency_cartesian_f32(indexes, x, y, z, d)
-    elif x.dtype in [float, np.float64]:
-        return compute_adjacency_cartesian_f64(indexes, x, y, z, d)
-    else:
-        raise TypeError("Only supports f32 and f64.")
-
-
 def gradient(
     field: ndarray[dtype[float | np.float32 | np.float64]],
     x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
@@ -59,5 +48,20 @@ def gradient(
         return gradient_f32(field, x, axis)
     elif x.dtype in [float, np.float64]:
         return gradient_f64(field, x, axis)
+    else:
+        raise TypeError("Only supports f32 and f64.")
+
+
+def compute_adjacency_list_cartesian(
+    indexes: list[tuple[int, int, int], dtype[int]],
+    x: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    y: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    z: ndarray[tuple[int], dtype[float | np.float32 | np.float64]],
+    d: float | np.float32 | np.float64,
+) -> list[list[tuple[int, int, int], dtype[int]]]:
+    if x.dtype == np.float32:
+        return compute_adjacency_list_cartesian_f32(indexes, x, y, z, d)
+    elif x.dtype in [float, np.float64]:
+        return compute_adjacency_list_cartesian_f64(indexes, x, y, z, d)
     else:
         raise TypeError("Only supports f32 and f64.")
