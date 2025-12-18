@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 
 from clump_tracker import compute_cc
-from clump_tracker._core import compute_cc
 from clump_tracker.clumps import Clump
 
 __all__ = ["find_clumps"]
