@@ -50,7 +50,7 @@ def _compute_cc_from_list_ref(indexes, x, y, z, max_distance):
     adj = _compute_adjacency_list_cartesian_ref(indexes, x, y, z, max_distance)
 
     # ajoute les voisins de p0 dans a_visiter
-    for i, _ in enumerate(indexes):
+    for i, _ in enumerate(indexes):  # pragma: no branch
         if not deja_vus[i]:
             composante_connexes.append([i])
         a_visiter = np.array([k in adj[i] for k in range(len(indexes))], dtype=bool)
