@@ -17,6 +17,14 @@ def axis(request):
     return request.param
 
 
+@pytest.mark.xfail
+def test_gradient_unsupported_type():
+    field = np.arange(10, dtype=int) + 5
+    x = np.arange(10, dtype=int)
+    axis = 0
+    gradient(field, x, axis)
+
+
 def test_gradient_1D_uniform(dtype):
     field = np.arange(10, dtype=dtype) + 5
     x = np.arange(10, dtype=dtype)
