@@ -176,6 +176,15 @@ def test_adjacency_list(indexes, dtype):
     ) == _compute_adjacency_list_cartesian_ref(indexes, x, y, z, 1.0)
 
 
+@pytest.mark.xfail
+def test_adjacency_list_unsupported_type(indexes):
+    x = np.linspace(0, 10, 50, dtype=int)
+    y = np.linspace(0, 5, 20, dtype=int)
+    z = np.linspace(0, 1, 5, dtype=int)
+
+    compute_adjacency_list_cartesian(indexes, x, y, z, 1.0)
+
+
 def test_cc_cartesian(cc_params, dtype):
     indexes = [[i, 0, 0] for i in range(3)]
     x = np.array([0, 1, 10], dtype=dtype)
@@ -185,7 +194,6 @@ def test_cc_cartesian(cc_params, dtype):
 
     actual = compute_cc(indexes, x, y, z, d, "cartesian")
     assert actual == expected
-
 
 def test_cc_oneBump():
     V = oneBump(128, 128)
@@ -207,3 +215,13 @@ def test_cc_oneBump():
     cc = compute_cc(list(coordinates), *coords, max_distance, "cartesian")
 
     assert len(cc) == 1
+
+@pytest.mark.xfail
+def test_cc_cartesian_unsupported_type(cc_params):
+    indexes = [[i, 0, 0] for i in range(3)]
+    x = np.array([0, 1, 10], dtype=int)
+    y = np.array([0], dtype=int)
+    z = np.array([0], dtype=int)
+    d, expected = cc_params
+
+    compute_cc(indexes, x, y, z, d, "cartesian")
