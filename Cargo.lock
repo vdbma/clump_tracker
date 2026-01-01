@@ -102,7 +102,7 @@ dependencies = [
 [[package]]
 name = "numpy"
 version = "0.27.1"
-source = "git+https://github.com/PyO3/rust-numpy.git?branch=main#9fffe3163624072c8f3c55aaf056a62fe57e428a"
+source = "git+https://github.com/PyO3/rust-numpy.git?branch=main#4149c5d10fb2fee4466227e0db2ff66a2c412e08"
 dependencies = [
  "libc",
  "ndarray",
