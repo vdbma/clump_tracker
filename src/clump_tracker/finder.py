@@ -15,7 +15,16 @@ if TYPE_CHECKING:
     from numpy import dtype, ndarray
 
 
-def default_condition(data):
+def default_condition(
+    data: dict[str, ndarray[tuple[int, int, int]]],
+    x: ndarray[tuple[int, int, int]],
+    y: ndarray[tuple[int, int, int]],
+    z: ndarray[tuple[int, int, int]],
+    q: float = 3 / 2,
+    Omega: float = 1,
+    gamma: float = -1.0,
+    cs: float = -1.0,
+):
     if gamma == -1 and "PRS" in data:
         raise ValueError("Please specify gamma.")
     elif gamma == -1 and cs == -1:
