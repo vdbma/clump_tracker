@@ -77,9 +77,10 @@ def test_find_clumps_pixels(n):
     coords = [V.x, V.y, V.z]
     dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
     max_distance = 1.1 * np.ediff1d(V.xE)[0]
-    clumps = find_clumps(
-        V.data, *coords, *dcoords, float(max_distance), condition=condition
-    )
+
+    mask = condition(V.data)
+
+    clumps = find_clumps(V.data, *coords, *dcoords, float(max_distance), mask)
     assert len(clumps) == n * n
 
 
@@ -88,7 +89,8 @@ def test_find_clumps_oneBump():
     coords = [V.x, V.y, V.z]
     dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
     max_distance = 1.1 * np.ediff1d(V.xE)[0]
-    clumps = find_clumps(
-        V.data, *coords, *dcoords, float(max_distance), condition=condition
-    )
+
+    mask = condition(V.data)
+
+    clumps = find_clumps(V.data, *coords, *dcoords, float(max_distance), mask)
     assert len(clumps) == 1

@@ -200,7 +200,9 @@ def test_cc_oneBump():
     gamma = 1
     cs = 1
 
-    coordinates = find_coordinates(V.data, *coords, q, Omega, gamma, cs, condition)
+    mask = condition(V.data)
+
+    coordinates = find_coordinates(V.data, *coords, mask)
 
     cc = compute_cc(list(coordinates), *coords, max_distance, "cartesian")
 
