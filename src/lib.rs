@@ -278,82 +278,59 @@ mod _core {
     }
 
 
-    fn compute_cc_from_list<T:AtLeastF32>(indexes:&Vec<Vec<usize>>,
-        x:&ArrayView1<'_, T>,
-        y:&ArrayView1<'_, T>,
-        z:&ArrayView1<'_, T>,
+    fn compute_cc_from_list<T: AtLeastF32>(
+        indexes: &Vec<Vec<usize>>,
+        x: &ArrayView1<'_, T>,
+        y: &ArrayView1<'_, T>,
+        z: &ArrayView1<'_, T>,
         d: T,
-        geometry:String ) -> Vec<Vec<usize>> {
+        geometry: String,
+    ) -> Vec<Vec<usize>> {
 
+        let n = indexes.len();
+        let mut composantes: Vec<Vec<usize>> = Vec::new();
+        let mut deja_vus = vec![false; n];
 
-    let mut composante_connexes:Vec<Vec<usize>> = Vec::new();
-    let mut nb_cc:usize = 0;
+        let adj: Vec<Vec<usize>> = if geometry == "cartesian" {
+            compute_adjacency_list_cartesian::<T>(indexes, x, y, z, d)
+        } else {
+            unimplemented!()
+        };
 
-    let mut deja_vus = Array1::<usize>::zeros(indexes.len());
-
-    let adj:Vec<Vec<usize>>;
-    if geometry == "cartesian" {
-            adj = compute_adjacency_list_cartesian::<T>(indexes,x,y,z,d);
-    } else {
-        unimplemented!()
-    }
-
-
-    for (i,_) in indexes.iter().enumerate(){
-        let mut a_visiter = Array1::<u8>::zeros(indexes.len());
-        if deja_vus[i] == 0 {
-            composante_connexes.push([i].to_vec());
-            nb_cc +=1;
-        }
-
-        for k in 0..adj[i].len() {
-            a_visiter[adj[i][k]] = 1;
-        }
-
-
-        a_visiter[[i]] = 0;
-        deja_vus[[i]] = 1;
-
-        for k in 0..indexes.len() {
-            if a_visiter[k] == 1 && deja_vus[k] == 0 {
-                a_visiter[k] = 1;
-            } else {
-                a_visiter[k] = 0; // useless
+        for i in 0..n {
+            if deja_vus[i] {
+                continue;
             }
-        }
 
-        while a_visiter.sum()>0 {
-            for (j,_) in indexes.iter().enumerate() {
-                if a_visiter[j] == 1 && deja_vus[j] == 0 {
-                    composante_connexes[nb_cc-1].push(j);
+            composantes.push(vec![i]);
+            let mut a_visiter = vec![0u8; n];
 
-                    for k in 0..adj[i].len() {
-                        a_visiter[adj[i][k]] = 1;
-                    }
-                    a_visiter[j] = 0;
-                    deja_vus[j] = 1;
+            deja_vus[i] = true;
 
-                    for k in 0..indexes.len() {
-                        if a_visiter[k] == 1 && deja_vus[k] == 0 {
-                            a_visiter[k] = 1;
-                        } else {
-                            a_visiter[k] = 0;
+            for &k in adj[i].iter() {
+                if !deja_vus[k] {
+                    a_visiter[k] = 1;
+                }
+            }
+
+            while a_visiter.iter().any(|&v| v == 1) {
+                for j in 0..n {
+                    if a_visiter[j] == 1 {
+                        a_visiter[j] = 0;
+                        deja_vus[j] = true;
+                        composantes.last_mut().unwrap().push(j);
+
+                        for &k in adj[j].iter() {
+                            if !deja_vus[k] {
+                                a_visiter[k] = 1;
+                            }
                         }
                     }
-
                 }
             }
         }
 
-        let nb_deja_vus:usize = deja_vus.sum().try_into().unwrap(); // sum result may overflow !
-        if  nb_deja_vus== indexes.len(){
-            break;
-        }
-
-
-    }
-
-    composante_connexes
+        composantes
     }
 
 
