@@ -195,6 +195,7 @@ def test_cc_cartesian(cc_params, dtype):
     actual = compute_cc(indexes, x, y, z, d, "cartesian")
     assert actual == expected
 
+
 def test_cc_oneBump():
     V = oneBump(128, 128)
     data = {f: V.data[f].astype(np.float64) for f in V.data}
@@ -215,6 +216,7 @@ def test_cc_oneBump():
     cc = compute_cc(list(coordinates), *coords, max_distance, "cartesian")
 
     assert len(cc) == 1
+
 
 @pytest.mark.xfail
 def test_cc_cartesian_unsupported_type(cc_params):
