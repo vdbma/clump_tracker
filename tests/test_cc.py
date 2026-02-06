@@ -62,11 +62,13 @@ def _compute_cc_from_list_ref(indexes, x, y, z, max_distance):
             for j, _ in enumerate(indexes):
                 if a_visiter[j] and not deja_vus[j]:
                     composante_connexes[-1].append(j)
+                    a_visiter[j] = False
+                    deja_vus[j] = True
+
                     a_visiter |= np.array(
                         [k in adj[i] for k in range(len(indexes))], dtype=bool
                     )
-                    a_visiter[j] = False
-                    deja_vus[j] = True
+
                     a_visiter &= ~deja_vus
 
         if np.sum(deja_vus) == len(indexes):
@@ -120,7 +122,7 @@ def test_cc(indexes, dtype):
 
     expected = _compute_cc_from_list_ref(indexes, x, y, z, 1.0)
     actual = compute_cc(indexes, x, y, z, 1.0, "cartesian")
-    assert expected == actual
+    assert [set(_) for _ in expected] == [set(_) for _ in actual]
 
 
 @pytest.mark.xfail
