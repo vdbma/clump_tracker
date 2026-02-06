@@ -1,11 +1,13 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
+from test_finder import condition, oneBump
 
 from clump_tracker import (
     compute_adjacency_list_cartesian,
     compute_cc,
 )
+from clump_tracker.finder import find_coordinates
 
 
 def _compute_adjacency_list_cartesian_ref(indexes, x, y, z, max_distance):
@@ -54,18 +56,20 @@ def _compute_cc_from_list_ref(indexes, x, y, z, max_distance):
         a_visiter = np.array([k in adj[i] for k in range(len(indexes))], dtype=bool)
         a_visiter[i] = False
         deja_vus[i] = True
-        a_visiter = np.logical_and(a_visiter, np.logical_not(deja_vus))
+        a_visiter &= ~deja_vus
 
         while np.sum(a_visiter) > 0:  # there are still people to visit
             for j, _ in enumerate(indexes):
                 if a_visiter[j] and not deja_vus[j]:
                     composante_connexes[-1].append(j)
-                    a_visiter += np.array(
-                        [k in adj[i] for k in range(len(indexes))], dtype=bool
-                    )
                     a_visiter[j] = False
                     deja_vus[j] = True
-                    a_visiter = np.logical_and(a_visiter, np.logical_not(deja_vus))
+
+                    a_visiter |= np.array(
+                        [k in adj[i] for k in range(len(indexes))], dtype=bool
+                    )
+
+                    a_visiter &= ~deja_vus
 
         if np.sum(deja_vus) == len(indexes):
             break
@@ -118,7 +122,7 @@ def test_cc(indexes, dtype):
 
     expected = _compute_cc_from_list_ref(indexes, x, y, z, 1.0)
     actual = compute_cc(indexes, x, y, z, 1.0, "cartesian")
-    assert expected == actual
+    assert [set(_) for _ in expected] == [set(_) for _ in actual]
 
 
 @pytest.mark.xfail
@@ -181,3 +185,23 @@ def test_cc_cartesian(cc_params, dtype):
 
     actual = compute_cc(indexes, x, y, z, d, "cartesian")
     assert actual == expected
+
+
+def test_cc_oneBump():
+    V = oneBump(128, 128)
+    data = {f: V.data[f].astype(np.float64) for f in V.data}
+    coords = [_.astype(np.float64) for _ in [V.x, V.y, V.z]]
+    dcoords = [np.ediff1d(_).astype(np.float64) for _ in [V.xE, V.yE, V.zE]]
+
+    max_distance = 1.1 * np.ediff1d(V.xE)[0]
+
+    q = 3 / 2
+    Omega = 1
+    gamma = 1
+    cs = 1
+
+    coordinates = find_coordinates(V.data, *coords, q, Omega, gamma, cs, condition)
+
+    cc = compute_cc(list(coordinates), *coords, max_distance, "cartesian")
+
+    assert len(cc) == 1
