@@ -15,20 +15,7 @@ if TYPE_CHECKING:
     from numpy import dtype, ndarray
 
 
-def find_coordinates(
-    data: dict[str, ndarray[tuple[int, int, int]]],
-    x: ndarray[tuple[int, int, int]],
-    y: ndarray[tuple[int, int, int]],
-    z: ndarray[tuple[int, int, int]],
-    q: float = 3 / 2,
-    Omega: float = 1,
-    gamma: float = -1.0,
-    cs: float = -1.0,
-    condition: Callable[
-        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
-    ]
-    | None = None,
-) -> ndarray[tuple[int, int, int]]:
+def default_condition(data):
     if gamma == -1 and "PRS" in data:
         raise ValueError("Please specify gamma.")
     elif gamma == -1 and cs == -1:
@@ -57,8 +44,27 @@ def find_coordinates(
 
     mask = np.logical_and(E_tot < 0, div_v < 0)
 
+    return mask
+
+
+def find_coordinates(
+    data: dict[str, ndarray[tuple[int, int, int]]],
+    x: ndarray[tuple[int, int, int]],
+    y: ndarray[tuple[int, int, int]],
+    z: ndarray[tuple[int, int, int]],
+    q: float = 3 / 2,
+    Omega: float = 1,
+    gamma: float = -1.0,
+    cs: float = -1.0,
+    condition: Callable[
+        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
+    ]
+    | None = None,
+) -> ndarray[tuple[int, int, int]]:
     if condition is not None:
-        mask = np.logical_and(mask, condition(data))
+        mask = condition(data)
+    else:
+        mask = default_condition(data)
 
     out = np.array(np.nonzero(mask)).T
     return out
