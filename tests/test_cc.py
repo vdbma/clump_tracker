@@ -56,18 +56,18 @@ def _compute_cc_from_list_ref(indexes, x, y, z, max_distance):
         a_visiter = np.array([k in adj[i] for k in range(len(indexes))], dtype=bool)
         a_visiter[i] = False
         deja_vus[i] = True
-        a_visiter = np.logical_and(a_visiter, np.logical_not(deja_vus))
+        a_visiter &= ~deja_vus
 
         while np.sum(a_visiter) > 0:  # there are still people to visit
             for j, _ in enumerate(indexes):
                 if a_visiter[j] and not deja_vus[j]:
                     composante_connexes[-1].append(j)
-                    a_visiter += np.array(
+                    a_visiter |= np.array(
                         [k in adj[i] for k in range(len(indexes))], dtype=bool
                     )
                     a_visiter[j] = False
                     deja_vus[j] = True
-                    a_visiter = np.logical_and(a_visiter, np.logical_not(deja_vus))
+                    a_visiter &= ~deja_vus
 
         if np.sum(deja_vus) == len(indexes):
             break
