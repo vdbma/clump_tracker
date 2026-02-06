@@ -15,66 +15,13 @@ if TYPE_CHECKING:
     from numpy import dtype, ndarray
 
 
-def default_condition(
-    data: dict[str, ndarray[tuple[int, int, int]]],
-    x: ndarray[tuple[int, int, int]],
-    y: ndarray[tuple[int, int, int]],
-    z: ndarray[tuple[int, int, int]],
-    q: float = 3 / 2,
-    Omega: float = 1,
-    gamma: float = -1.0,
-    cs: float = -1.0,
-):
-    if gamma == -1 and "PRS" in data:
-        raise ValueError("Please specify gamma.")
-    elif gamma == -1 and cs == -1:
-        raise ValueError("Please specify either gamma or cs.")
-
-    xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-
-    Ec = (
-        0.5
-        * data["RHO"]
-        * (data["VX1"] * data["VX1"] + (data["VX2"] + q * Omega * xx) ** 2)
-    )
-    Ep = data["RHO"] * data["phiP"]
-
-    if "PRS" in data:
-        E_t = data["PRS"] / (gamma - 1)
-    else:
-        E_t = cs * cs * data["RHO"]
-    E_tot = Ec + Ep + E_t
-
-    div_v = np.gradient(data["VX1"], x, axis=0)
-    if len(y) > 1:
-        div_v += np.gradient(data["VX2"], y, axis=1)
-    if len(z) > 1:
-        div_v += np.gradient(data["VX3"], z, axis=2)
-
-    mask = np.logical_and(E_tot < 0, div_v < 0)
-
-    return mask
-
-
 def find_coordinates(
     data: dict[str, ndarray[tuple[int, int, int]]],
     x: ndarray[tuple[int, int, int]],
     y: ndarray[tuple[int, int, int]],
     z: ndarray[tuple[int, int, int]],
-    q: float = 3 / 2,
-    Omega: float = 1,
-    gamma: float = -1.0,
-    cs: float = -1.0,
-    condition: Callable[
-        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
-    ]
-    | None = None,
-) -> ndarray[tuple[int, int, int]]:
-    if condition is not None:
-        mask = condition(data)
-    else:
-        mask = default_condition(data)
-
+    mask: ndarray[tuple[int, int, int], dtype[bool]],
+) -> ndarray[tuple[int, 3]]:
     out = np.array(np.nonzero(mask)).T
     return out
 
@@ -88,17 +35,9 @@ def find_clumps(
     dy: ndarray[tuple[int, int, int]],
     dz: ndarray[tuple[int, int, int]],
     max_distance: float,
-    *,
-    q: float = 3 / 2,
-    Omega: float = 1,
-    gamma: float = -1.0,
-    cs: float = -1.0,
-    condition: Callable[
-        [ndarray[tuple[int, int, int]]], ndarray[tuple[int, int, int], dtype[bool]]
-    ]
-    | None = None,
+    mask: ndarray[tuple[int, int, int], dtype[bool]],
 ) -> list[Clump]:
-    coordinates = find_coordinates(data, x, y, z, q, Omega, gamma, cs, condition)
+    coordinates = find_coordinates(data, x, y, z, mask)
 
     cc = compute_cc(list(coordinates), x, y, z, max_distance, "cartesian")
 
