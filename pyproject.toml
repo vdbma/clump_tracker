@@ -30,6 +30,10 @@ build-backend = "maturin"
 test = [
     "pytest>=9.0.1",
 ]
+covcheck = [
+    {include-group = "test"},
+    "coverage>=7.10.0",
+]
 
 [tool.pytest]
 strict = true
@@ -42,4 +46,24 @@ select = [
     "B", # flake8-bugbear
     "I", # isort
     "UP", # pyupgrade
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "src/clump_tracker",
+    "tests",
+    "src"
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+# use exclude_also to *extend* the default exclude_lines,
+# and allow purely defensive code patterns
+exclude_also = [
+    "^\\s*raise NotImplementedError\\b",
+    "^\\s*raise RuntimeError\\b",
+    "^\\s*case _ as unreachable:",
 ]

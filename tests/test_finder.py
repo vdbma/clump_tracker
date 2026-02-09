@@ -28,11 +28,16 @@ class FakeVTK:
 
 
 def _data(Nx, Ny, Nz):
-    return {
+    data = {
         "RHO": np.zeros((Nx, Ny, Nz)),
         "VX1": np.zeros((Nx, Ny, Nz)),
         "VX2": np.zeros((Nx, Ny, Nz)),
     }
+
+    if Nz > 1:
+        data["VX3"] = np.zeros((Nx, Ny, Nz))
+
+    return data
 
 
 def n2Pixel(n, Nx=1024, Ny=1024, Nz=1):
@@ -86,6 +91,43 @@ def test_find_clumps_pixels(n):
 
 def test_find_clumps_oneBump():
     V = oneBump(128, 128)
+    coords = [V.x, V.y, V.z]
+    dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
+    max_distance = 1.1 * np.ediff1d(V.xE)[0]
+
+    mask = condition(V.data)
+
+    clumps = find_clumps(V.data, *coords, *dcoords, float(max_distance), mask)
+    assert len(clumps) == 1
+
+
+def test_find_clumps_oneBump_1D():
+    V = oneBump(128, 1)
+    del V.data["VX2"]
+    coords = [V.x, V.y, V.z]
+    dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
+    max_distance = 1.1 * np.ediff1d(V.xE)[0]
+
+    mask = condition(V.data)
+
+    clumps = find_clumps(V.data, *coords, *dcoords, float(max_distance), mask)
+    assert len(clumps) == 1
+
+
+def test_find_clumps_oneBump_1p5D():
+    V = oneBump(128, 1)
+    coords = [V.x, V.y, V.z]
+    dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
+    max_distance = 1.1 * np.ediff1d(V.xE)[0]
+
+    mask = condition(V.data)
+
+    clumps = find_clumps(V.data, *coords, *dcoords, float(max_distance), mask)
+    assert len(clumps) == 1
+
+
+def test_find_clumps_oneBump_3D():
+    V = oneBump(32, 32, 32)
     coords = [V.x, V.y, V.z]
     dcoords = [np.ediff1d(_) for _ in [V.xE, V.yE, V.zE]]
     max_distance = 1.1 * np.ediff1d(V.xE)[0]
