@@ -30,6 +30,10 @@ build-backend = "maturin"
 test = [
     "pytest>=9.0.1",
 ]
+covcheck = [
+    {include-group = "test"},
+    "coverage>=7.10.0",
+]
 
 [tool.pytest]
 strict = true
