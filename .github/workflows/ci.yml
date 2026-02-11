@@ -60,8 +60,7 @@ jobs:
 
     - name: Check coverage
       run: |
-        uv run --group covcheck \
-          coverage run --parallel-mode -m pytest --color=yes
+        coverage run --parallel-mode -m pytest --color=yes
         coverage combine
         coverage html --skip-covered --skip-empty
         coverage report --skip-covered --format=markdown >> "$GITHUB_STEP_SUMMARY"
