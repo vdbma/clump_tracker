@@ -60,7 +60,7 @@ jobs:
 
     - name: Check coverage
       run: |
-        uv run --group covcheck \
+        uv run\
           coverage run --parallel-mode -m pytest --color=yes
         coverage combine
         coverage html --skip-covered --skip-empty
